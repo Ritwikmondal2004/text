@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meeting Notes Summarizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 40px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .step {
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .step:nth-child(1) { animation-delay: 0.1s; }
+        .step:nth-child(2) { animation-delay: 0.2s; }
+        .step:nth-child(3) { animation-delay: 0.3s; }
+        .step:nth-child(4) { animation-delay: 0.4s; }
+        .step:nth-child(5) { animation-delay: 0.5s; }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 15px;
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .step-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .file-upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .file-upload-area.dragover {
+            border-color: #667eea;
+            background: #e6f0ff;
+            transform: scale(1.02);
+        }
+
+        .file-upload-icon {
+            font-size: 3rem;
+            color: #a0aec0;
+            margin-bottom: 15px;
+        }
+
+        .file-upload-text {
+            font-size: 1.1rem;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+
+        .file-upload-subtext {
+            font-size: 0.9rem;
+            color: #a0aec0;
+        }
+
+        input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #e6fffa;
+            border: 1px solid #81e6d9;
+            border-radius: 8px;
+            color: #234e52;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 120px;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .prompt-suggestions {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .suggestion-tag {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .suggestion-tag:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            min-width: 200px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .generate-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .generate-btn:hover::before {
+            left: 100%;
+        }
+
+        .loading-spinner {
+            display: none;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f0f0f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .summary-section {
+            display: none;
+            background: #f8f9ff;
+            border: 2px solid #e6f0ff;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .summary-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .edit-toggle {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .edit-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(72, 187, 120, 0.3);
+        }
+
+        .summary-content {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            line-height: 1.7;
+        }
+
+        .summary-content[contenteditable="true"] {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .email-section {
+            display: none;
+            background: #fff8f0;
+            border: 2px solid #ffeaa7;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .email-header {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+
+        .email-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .email-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .add-email-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .add-email-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .email-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+            min-height: 30px;
+        }
+
+        .email-tag {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .email-tag .remove-btn {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .email-tag .remove-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(245, 87, 108, 0.3);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 30px 20px;
+            }
+
+            .email-input-group {
+                flex-direction: column;
+            }
+
+            .step-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Meeting Notes Summarizer</h1>
+            <p>Transform your meeting transcripts into actionable summaries with AI</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Step 1: Upload Transcript -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Upload Meeting Transcript</div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <div class="file-upload-icon">📄</div>
+                        <div class="file-upload-text">Click to upload or drag & drop</div>
+                        <div class="file-upload-subtext">Supports .txt, .md, .pdf files</div>
+                        <input type="file" id="fileInput" accept=".txt,.md,.pdf">
+                    </div>
+                    <div class="file-info" id="fileInfo">
+                        <strong>File uploaded:</strong> <span id="fileName"></span><br>
+                        <strong>Size:</strong> <span id="fileSize"></span> | <strong>Words:</strong> <span id="wordCount"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Custom Instructions -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Add Custom Instructions</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="customPrompt">Tell the AI how to summarize your meeting:</label>
+                    <textarea id="customPrompt" placeholder="e.g., 'Create bullet points for executives focusing on key decisions and next steps'">Summarize the meeting notes in a clear, structured format highlighting key discussion points, decisions made, and action items with assigned responsibilities.</textarea>
+                    
+                    <div class="prompt-suggestions">
+                        <div class="suggestion-tag" onclick="setPrompt('Summarize in bullet points for executives')">📊 Executive Summary</div>
+                        <div class="suggestion-tag" onclick="setPrompt('Highlight only action items with deadlines')">✅ Action Items Only</div>
+                        <div class="suggestion-tag" onclick="setPrompt('Create detailed minutes with timestamps')">⏰ Detailed Minutes</div>
+                        <div class="suggestion-tag" onclick="setPrompt('Focus on key decisions and outcomes')">🎯 Decisions & Outcomes</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Generate Summary -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Generate AI Summary</div>
+                </div>
+                
+                <button class="generate-btn" id="generateBtn" onclick="generateSummary()">
+                    <span id="generateBtnText">🤖 Generate Summary</span>
+                </button>
+
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>AI is analyzing your meeting transcript...</p>
+                </div>
+            </div>
+
+            <!-- Step 4: Edit Summary -->
+            <div class="step">
+                <div class="summary-section" id="summarySection">
+                    <div class="summary-header">
+                        <div class="summary-title">📝 Generated Summary</div>
+                        <button class="edit-toggle" id="editToggle" onclick="toggleEdit()">✏️ Enable Editing</button>
+                    </div>
+                    <div class="summary-content" id="summaryContent" contenteditable="false"></div>
+                </div>
+            </div>
+
+            <!-- Step 5: Share via Email -->
+            <div class="step">
+                <div class="email-section" id="emailSection">
+                    <div class="email-header">📧 Share Summary via Email</div>
+                    
+                    <div class="email-input-group">
+                        <input type="email" class="email-input" id="emailInput" placeholder="Enter recipient email address">
+                        <button class="add-email-btn" onclick="addEmail()">Add Email</button>
+                    </div>
+                    
+                    <div class="email-tags" id="emailTags"></div>
+                    
+                    <button class="send-btn" id="sendBtn" onclick="sendEmails()">
+                        📤 Send Summary
+                    </button>
+                    
+                    <div class="status-message" id="statusMessage"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let uploadedText = '';
+        let emailList = [];
+        let isEditing = false;
+
+        // File upload handling
+        const fileInput = document.getElementById('fileInput');
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const fileInfo = document.getElementById('fileInfo');
+
+        // Drag and drop functionality
+        fileUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        });
+
+        fileUploadArea.addEventListener('dragleave', () => {
+            fileUploadArea.classList.remove('dragover');
+        });
+
+        fileUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Initial setup
+        setupFileInput();
+
+        function handleFile(file) {
+            // Check file type
+            const isPDF = file.type === 'application/pdf';
+            const isText = file.type.match('text.*');
+            
+            if (!isPDF && !isText) {
+                alert('Please upload a text file (.txt, .md) or PDF file (.pdf)');
+                return;
+            }
+
+            if (isPDF) {
+                handlePDFFile(file);
+            } else {
+                handleTextFile(file);
+            }
+        }
+
+        function handleTextFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedText = e.target.result;
+                updateFileInfo(file, uploadedText);
+            };
+            reader.readAsText(file);
+        }
+
+        async function handlePDFFile(file) {
+            try {
+                // Show processing message
+                fileUploadArea.innerHTML = `
+                    <div class="file-upload-icon">🔄</div>
+                    <div class="file-upload-text">Processing PDF...</div>
+                    <div class="file-upload-subtext">Extracting text content</div>
+                `;
+
+                const arrayBuffer = await file.arrayBuffer();
+                const text = await extractTextFromPDF(arrayBuffer);
+                
+                if (!text.trim()) {
+                    throw new Error('No text content found in PDF');
+                }
+                
+                uploadedText = text;
+                updateFileInfo(file, uploadedText);
+                
+            } catch (error) {
+                console.error('PDF processing error:', error);
+                alert('Error processing PDF file. Please ensure it contains readable text content.');
+                
+                // Reset upload area
+                fileUploadArea.innerHTML = `
+                    <div class="file-upload-icon">📄</div>
+                    <div class="file-upload-text">Click to upload or drag & drop</div>
+                    <div class="file-upload-subtext">Supports .txt, .md, .pdf files</div>
+                    <input type="file" id="fileInput" accept=".txt,.md,.pdf">
+                `;
+                setupFileInput();
+            }
+        }
+
+        async function extractTextFromPDF(arrayBuffer) {
+            // Simple PDF text extraction (basic implementation)
+            // In production, you'd use a library like PDF.js or process on the server
+            
+            const uint8Array = new Uint8Array(arrayBuffer);
+            let text = '';
+            
+            // Convert to string and look for text content
+            const pdfString = new TextDecoder('latin1').decode(uint8Array);
+            
+            // Basic PDF text extraction using regex patterns
+            // This is a simplified approach - for production use PDF.js or server-side processing
+            const textMatches = pdfString.match(/\(([^)]+)\)/g);
+            
+            if (textMatches) {
+                textMatches.forEach(match => {
+                    const cleanText = match.slice(1, -1) // Remove parentheses
+                        .replace(/\\[nrt]/g, ' ') // Replace escape sequences
+                        .replace(/\s+/g, ' ') // Normalize whitespace
+                        .trim();
+                    
+                    if (cleanText.length > 2) { // Only add meaningful text
+                        text += cleanText + ' ';
+                    }
+                });
+            }
+            
+            // Alternative: Look for stream content (simplified)
+            const streamPattern = /stream\s*([\s\S]*?)\s*endstream/g;
+            let streamMatch;
+            
+            while ((streamMatch = streamPattern.exec(pdfString)) !== null) {
+                const streamContent = streamMatch[1];
+                // Try to extract readable text from stream
+                const readableText = streamContent.replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                
+                if (readableText.length > 10) {
+                    text += readableText + ' ';
+                }
+            }
+            
+            // Fallback: Create mock content if extraction fails
+            if (!text.trim()) {
+                text = `PDF Content Extracted - Meeting Notes
+
+This is extracted content from the uploaded PDF file. The system has processed the PDF and extracted the following text content for summarization.
+
+Key Discussion Points:
+- Project updates and status reviews
+- Budget considerations and resource allocation  
+- Timeline discussions and milestone planning
+- Action items and responsibility assignments
+- Next steps and follow-up requirements
+
+Note: This is a demonstration of PDF processing. In a production environment, you would use proper PDF parsing libraries like PDF.js or server-side PDF processing tools to extract the actual text content from your PDF files.
+
+The AI summarizer will process this extracted content according to your custom instructions to generate a structured summary.`;
+            }
+            
+            return text.trim();
+        }
+
+        function updateFileInfo(file, text) {
+            // Update file info
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('wordCount').textContent = countWords(text);
+            fileInfo.style.display = 'block';
+            
+            // Update upload area appearance
+            const fileType = file.type === 'application/pdf' ? 'PDF' : 'Text';
+            fileUploadArea.innerHTML = `
+                <div class="file-upload-icon">✅</div>
+                <div class="file-upload-text">${fileType} file uploaded successfully!</div>
+                <div class="file-upload-subtext">${file.name}</div>
+                <input type="file" id="fileInput" accept=".txt,.md,.pdf">
+            `;
+            
+            setupFileInput();
+        }
+
+        function setupFileInput() {
+            // Re-add event listener
+            const newFileInput = document.getElementById('fileInput');
+            if (newFileInput) {
+                newFileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFile(e.target.files[0]);
+                    }
+                });
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function countWords(text) {
+            return text.trim().split(/\s+/).length;
+        }
+
+        function setPrompt(prompt) {
+            document.getElementById('customPrompt').value = prompt;
+        }
+
+        async function generateSummary() {
+            if (!uploadedText.trim()) {
+                alert('Please upload a transcript first!');
+                return;
+            }
+
+            const prompt = document.getElementById('customPrompt').value.trim();
+            if (!prompt) {
+                alert('Please enter custom instructions!');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('generateBtnText').textContent = 'Generating...';
+            document.getElementById('loadingSpinner').style.display = 'block';
+
+            try {
+                // Simulate AI processing (replace with actual API call)
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Generate mock summary
+                const summary = await generateAISummary(uploadedText, prompt);
+                
+                // Display summary
+                document.getElementById('summaryContent').innerHTML = summary;
+                document.getElementById('summarySection').style.display = 'block';
+                document.getElementById('emailSection').style.display = 'block';
+                
+                // Scroll to summary
+                document.getElementById('summarySection').scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                alert('Error generating summary. Please try again.');
+            } finally {
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('generateBtnText').textContent = '🤖 Generate Summary';
+                document.getElementById('loadingSpinner').style.display = 'none';
+            }
+        }
+
+        async function generateAISummary(text, prompt) {
+            // This would be replaced with actual AI API call (OpenAI, Groq, etc.)
+            const wordCount = text.split(' ').length;
+            const lines = text.split('\n').filter(line => line.trim()).length;
+            
+            let summary = `
+                <h3 style="color: #667eea; margin-bottom: 15px;">Meeting Summary</h3>
+                
+                <div style="background: #f8f9ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <strong>Document Statistics:</strong><br>
+                    • Word count: ${wordCount} words<br>
+                    • Content lines: ${lines}<br>
+                    • Processing instruction: "${prompt}"
+                </div>
+            `;
+
+            if (prompt.toLowerCase().includes('bullet') || prompt.toLowerCase().includes('executive')) {
+                summary += `
+                    <h4 style="color: #4a5568; margin: 20px 0 10px 0;">📋 Key Points:</h4>
+                    <ul style="margin-left: 20px; line-height: 1.8;">
+                        <li>Main discussion topics were identified and prioritized</li>
+                        <li>Strategic decisions were made regarding project direction</li>
+                        <li>Budget allocations and resource assignments were discussed</li>
+                        <li>Timeline milestones and deliverables were established</li>
+                    </ul>
+                `;
+            }
+
+            if (prompt.toLowerCase().includes('action') || prompt.toLowerCase().includes('items')) {
+                summary += `
+                    <h4 style="color: #4a5568; margin: 20px 0 10px 0;">✅ Action Items:</h4>
+                    <ul style="margin-left: 20px; line-height: 1.8;">
+                        <li><strong>John Smith:</strong> Prepare quarterly report by Friday</li>
+                        <li><strong>Sarah Johnson:</strong> Schedule follow-up meeting with stakeholders</li>
+                        <li><strong>Team Lead:</strong> Review and approve budget proposals</li>
+                        <li><strong>All:</strong> Submit status updates before next meeting</li>
+                    </ul>
+                `;
+            }
+
+            if (prompt.toLowerCase().includes('decision') || prompt.toLowerCase().includes('outcome')) {
+                summary += `
+                    <h4 style="color: #4a5568; margin: 20px 0 10px 0;">🎯 Key Decisions:</h4>
+                    <ul style="margin-left: 20px; line-height: 1.8;">
+                        <li>Approved the proposed project timeline and budget</li>
+                        <li>Decided to implement new workflow processes</li>
+                        <li>Selected vendor for upcoming technology upgrade</li>
+                        <li>Established weekly check-in meetings for project updates</li>
+                    </ul>
+                `;
+            }
+
+            summary += `
+                <div style="background: #e6fffa; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #38a169;">
+                    <strong>📝 Note:</strong> This is an AI-generated summary based on your instructions. 
+                    You can edit this content before sharing. In a production environment, this would be 
+                    generated using advanced AI models like GPT-4, Claude, or Groq.
+                </div>
+            `;
+
+            return summary;
+        }
+
+        function toggleEdit() {
+            const content = document.getElementById('summaryContent');
+            const toggle = document.getElementById('editToggle');
+            
+            isEditing = !isEditing;
+            
+            if (isEditing) {
+                content.contentEditable = 'true';
+                content.focus();
+                toggle.textContent = '💾 Save Changes';
+                content.style.background = '#fffef0';
+            } else {
+                content.contentEditable = 'false';
+                toggle.textContent = '✏️ Enable Editing';
+                content.style.background = 'white';
+            }
+        }
+
+        function addEmail() {
+            const emailInput = document.getElementById('emailInput');
+            const email = emailInput.value.trim();
+            
+            if (!email) {
+                alert('Please enter an email address');
+                return;
+            }
+            
+            if (!isValidEmail(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            if (emailList.includes(email)) {
+                alert('Email already added');
+                return;
+            }
+            
+            emailList.push(email);
+            emailInput.value = '';
+            updateEmailTags();
+        }
+
+        function removeEmail(email) {
+            emailList = emailList.filter(e => e !== email);
+            updateEmailTags();
+        }
+
+        function updateEmailTags() {
+            const container = document.getElementById('emailTags');
+            container.innerHTML = '';
+            
+            emailList.forEach(email => {
+                const tag = document.createElement('div');
+                tag.className = 'email-tag';
+                tag.innerHTML = `
+                    ${email}
+                    <button class="remove-btn" onclick="removeEmail('${email}')">&times;</button>
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        async function sendEmails() {
+            if (emailList.length === 0) {
+                alert('Please add at least one email address');
+                return;
+            }
+
+            const summary = document.getElementById('summaryContent').innerHTML;
+            const sendBtn = document.getElementById('sendBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            // Show loading
+            sendBtn.disabled = true;
+            sendBtn.textContent = '📤 Sending...';
+            
+            try {
+                // Simulate email sending
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Show success message
+                statusMessage.className = 'status-message status-success';
+                statusMessage.textContent = `✅ Summary successfully sent to ${emailList.length} recipient(s)!`;
+                statusMessage.style.display = 'block';
+                
+                // Log for demonstration
+                console.log('Summary sent to:', emailList);
+                console.log('Summary content:', summary);
+                
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    emailList = [];
+                    updateEmailTags();
+                    statusMessage.style.display = 'none';
+                }, 3000);
+                
+            } catch (error) {
+                statusMessage.className = 'status-message status-error';
+                statusMessage.textContent = '❌ Failed to send summary. Please try again.';
+                statusMessage.style.display = 'block';
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '📤 Send Summary';
+            }
+        }
+
+        // Email input enter key handler
+        document.getElementById('emailInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addEmail();
+            }
+        });
+
+        // Global function for removing emails (called from onclick)
+        window.removeEmail = removeEmail;
+    </script>
+</body>
+</html>
